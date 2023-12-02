@@ -6,13 +6,15 @@ from string import punctuation
 import mwparserfromhell as mwp
 from bs4 import BeautifulSoup, MarkupResemblesLocatorWarning
 import warnings
+
 warnings.filterwarnings("ignore", category=MarkupResemblesLocatorWarning)
 
 _quote_pattern = re.compile(r"<(q|blockquote)>.*</(q|blockquote)>", re.DOTALL)
 _wikiquote_pattern = re.compile(r"{{Wikiquote\|(?P<title>.+?)}}", re.I)
 _timestamp_pattern = re.compile(
-    r"[0-9]{2}:[0-9]{2}, [0-9]{1,2} [^\W\d]+ [0-9]{4} \(UTC\)", re.I
+    r"[0-9]{2}:[0-9]{2}, [0-9]{1,2} [^\W\d]+ [0-9]{4} (?:\(UTC\)|\(IDT\))", re.I
 )
+
 _user_link_pattern = re.compile(r"(User_talk|User):(=?P<title>.+)", re.I)
 _user_mention_pattern = re.compile(r"@\[?(?P<title>.+?)\]?", re.I)
 
@@ -89,7 +91,7 @@ def clean_text(text):
 
 
 def is_open_parenthesis(node_str):
-    return node_str.strip().endswith("(")
+    return node_str.strip().endswith("(") and not node_str.strip().startswith(")")
 
 
 def is_close_parenthesis(node_str):
@@ -98,7 +100,7 @@ def is_close_parenthesis(node_str):
 
 
 def is_open_wikiquote(node_str):
-    return node_str.strip().startswith("{{")
+    return node_str.strip().startswith("{{") and not node_str.strip().endswith("}}")
 
 
 def is_closing_wikiquote(node_str):
@@ -186,10 +188,7 @@ def parse_section_line(stack, level=0):
     if contents:
         last_element = contents[-1]
         before_last_element = contents[-2] if len(contents) > 1 else None
-        if is_user_mention(last_element):
-            data["author"] = last_element
-            contents.pop()
-        elif (
+        if (
                 is_user_mention(before_last_element)
                 and last_element.startswith("(")
                 and last_element.endswith(")")
@@ -197,6 +196,10 @@ def parse_section_line(stack, level=0):
             data["author"] = before_last_element
             contents.pop()
             contents.pop()
+        elif is_user_mention(last_element):
+            data["author"] = last_element
+            contents.pop()
+
 
     data["text"] = clean_text("\n".join(contents))
     return data
@@ -209,6 +212,8 @@ def get_html_tag(markup):
 
 def is_new_post(node):
     node_str = str(node.strip()).strip()
+    if not node_str:
+        return False
     if all(c in MARKUP_TO_HTML for c in node_str):
         return True
     return False
@@ -272,7 +277,8 @@ def iter_nodes(wikitext):
 
     def _fix_incorret_splittings(wikitext):
         for node in _fix_parenthesis(wikitext):
-            if node.strip() and isinstance(node, mwp.nodes.Text) and "UTC" in str(node):
+            if (node.strip() and isinstance(node, mwp.nodes.Text)
+                    and ("UTC" in str(node) or "UDT" in str(node))):
                 # fix incorrect parsing of mwp , - detect timestamp and put break line
                 texts = []
                 for line in str(node).split("\n"):
