@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import re
+import os
+from pathlib import Path
+PROJECT_DIR = Path(__file__).parent
+os.environ['PYWIKIBOT_DIR'] = str(PROJECT_DIR)
 import pywikibot as pw
 
 _link_pattern = re.compile(r"https?://\S+")
