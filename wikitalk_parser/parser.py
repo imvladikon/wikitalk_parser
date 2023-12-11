@@ -27,7 +27,11 @@ MARKUP_TO_HTML = {
 
 
 def is_timestamp(node_str):
-    return node_str and _timestamp_pattern.match(node_str) is not None
+    if node_str and _timestamp_pattern.match(node_str) is not None:
+        return True
+    if "(UTC)" in node_str or "(UDT)" in node_str or "(IST)" in node_str or "(IDT)" in node_str:
+        return True
+    return False
 
 
 def is_quote(node_str):
@@ -171,7 +175,8 @@ def parse_section_line(stack, level=0):
             if data["links"] is None:
                 data["links"] = list()
             data["links"].append({"link": str(node.text), "text": str(node.title)})
-            username = node.text or node.title
+            username = node.title or node.text
+            print(node.title, "->", node.text)
             contents.append(f"@{username}")
         elif isinstance(node, mwp.nodes.Tag):
             contents.append(str(node))
