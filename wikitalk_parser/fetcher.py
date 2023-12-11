@@ -35,7 +35,7 @@ TALK = {
 }
 
 
-def get_wikitalk_api(title, *, language):
+def get_wikitalk_from_api(title, *, language):
     if is_link(title):
         title = title.split("/")[-1]
     url = "https://{}.wikipedia.org/api/rest_v1/page/talk/{}%3A{}?redirect=true"

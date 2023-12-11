@@ -50,4 +50,13 @@ for section in parsed:
     print()
 ```
 
+### Getting wikitalk through API
+
+```python
+from wikitalk_parser import get_wikitalk_from_api
+
+threads = get_wikitalk_from_api("Elon_Musk", language="en")
+for thread in threads:
+    print(thread)
+```
 
