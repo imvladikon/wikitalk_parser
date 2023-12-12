@@ -68,11 +68,16 @@ def get_wikitalk_from_api(title, *, language):
         return data
 
     data = mark_datetime(data)
+
     topics = data["topics"]
     topics = [topic for topic in topics if topic["html"]]
     for topic in topics:
         topic.pop("shas", None)
         topic["title"] = topic.pop("html")
+        depth_user = {}
         for reply in topic["replies"]:
             reply.pop("sha", None)
+            if "username" in reply:
+                depth_user[reply["depth"]] = reply["username"]
+                reply["parent_username"] = depth_user.get(reply["depth"] - 1)
     return topics
