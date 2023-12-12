@@ -3,9 +3,11 @@
 import re
 import os
 from pathlib import Path
+from string import punctuation
 
 import requests
 from bs4 import BeautifulSoup
+from markdownify import markdownify
 
 from wikitalk_parser.parser import is_timestamp
 
@@ -44,7 +46,7 @@ def get_wikitalk_from_api(title, *, language):
     response = requests.get(url)
     data = response.json()
 
-    def mark_datetime(data):
+    def extract_properties(data):
         for topic in data["topics"]:
             for reply in topic["replies"]:
                 if "<a" not in reply["html"]:
@@ -64,9 +66,20 @@ def get_wikitalk_from_api(title, *, language):
                     href = last_a["href"]
                     reply["username"] = href.split(":")[-1] if ":" in href else None
 
+                if "html" in reply:
+                    if last_a and last_a.next_sibling:
+                        last_a.next_sibling.extract()
+                    if last_a:
+                        last_a.extract()
+                    reply["text"] = markdownify(str(doc), strip=['a']).strip(punctuation+"– ")
+                    if reply["text"] and reply["username"] and reply["text"].endswith(reply["username"]):
+                        reply["text"] = reply["text"][:-len(reply["username"])].strip(punctuation+"– ")
+                else:
+                    reply["text"] = None
+
         return data
 
-    data = mark_datetime(data)
+    data = extract_properties(data)
 
     topics = data["topics"]
     topics = [topic for topic in topics if topic.get("replies")]
