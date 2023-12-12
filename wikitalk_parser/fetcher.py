@@ -50,27 +50,26 @@ def get_wikitalk_from_api(title, *, language):
                 if "<a" not in reply["html"]:
                     continue
                 doc = BeautifulSoup(reply["html"], "html.parser")
-                # find last <a> tag
-                last_a = doc.find_all("a")[-1]
-                # find text after last <a> tag
-                timestamp = last_a.next_sibling
-                if is_timestamp(str(timestamp)):
-                    reply["timestamp"] = str(timestamp)
+                all_links = [link for link in doc.find_all("a") if
+                             link.has_attr("href") and not link["href"].startswith("http")]
+                if all_links:
+                    last_a = all_links[-1]
+                    timestamp = last_a.next_sibling
                 else:
-                    reply["timestamp"] = None
-                if not last_a.has_attr("href"):
+                    last_a = timestamp = None
+                reply["timestamp"] = str(timestamp) if timestamp and is_timestamp(str(timestamp)) else None
+                if not last_a or not last_a.has_attr("href"):
                     reply["username"] = None
                 else:
                     href = last_a["href"]
-                    username = href.split(":")[-1] if ":" in href else None
-                    reply["username"] = username
+                    reply["username"] = href.split(":")[-1] if ":" in href else None
 
         return data
 
     data = mark_datetime(data)
 
     topics = data["topics"]
-    topics = [topic for topic in topics if topic["html"]]
+    topics = [topic for topic in topics if topic.get("replies")]
     for topic in topics:
         topic.pop("shas", None)
         topic["title"] = topic.pop("html")
